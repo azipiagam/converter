@@ -4,6 +4,14 @@ const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 
+// Fungsi untuk clean up header names
+function cleanHeader(header) {
+  if (typeof header !== "string") {
+    return String(header).toLowerCase().replace(/\s+/g, "_");
+  }
+  return header.toLowerCase().replace(/\s+/g, "_");
+}
+
 // Fungsi untuk convert single file
 function convertXlsToJsonl(inputPath, outputPath = null) {
   try {
@@ -15,8 +23,18 @@ function convertXlsToJsonl(inputPath, outputPath = null) {
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
 
-    // Convert ke JSON Lines (JSONL)
-    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    // Convert ke JSON Lines (JSONL) dengan header yang sudah di-clean
+    const rawJsonData = XLSX.utils.sheet_to_json(worksheet);
+
+    // Clean up headers dan rebuild objects
+    const jsonData = rawJsonData.map((row) => {
+      const cleanedRow = {};
+      Object.keys(row).forEach((key) => {
+        const cleanKey = cleanHeader(key);
+        cleanedRow[cleanKey] = row[key];
+      });
+      return cleanedRow;
+    });
 
     // Convert array ke JSON Lines format (satu object per line)
     const jsonlData = jsonData.map((row) => JSON.stringify(row)).join("\n");
