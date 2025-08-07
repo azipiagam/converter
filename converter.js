@@ -67,7 +67,7 @@ function convertXlsToJsonl(inputPath, outputPath = null) {
 }
 
 // Fungsi untuk convert multiple files di folder
-function convertFolder(folderPath) {
+function convertFolder(folderPath, customOutputDir = null) {
   try {
     const files = fs.readdirSync(folderPath);
     const xlsFiles = files.filter(
@@ -81,19 +81,32 @@ function convertFolder(folderPath) {
       return;
     }
 
-    console.log(`📁 Ditemukan ${xlsFiles.length} file Excel`);
+    console.log(`📁 Ditemukan ${xlsFiles.length} file Excel di: ${folderPath}`);
+
+    // Tentukan output directory
+    let outputDir;
+    if (customOutputDir) {
+      outputDir = path.resolve(customOutputDir);
+    } else {
+      // Default ke folder output di project
+      outputDir = path.join(process.cwd(), "output");
+    }
 
     // Cek atau buat folder output
-    const outputDir = path.join(process.cwd(), "output");
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
       console.log(`📁 Folder output dibuat: ${outputDir}`);
     }
 
+    console.log(`📤 Output akan disimpan ke: ${outputDir}`);
+
     let successCount = 0;
     xlsFiles.forEach((file) => {
       const inputPath = path.join(folderPath, file);
-      const result = convertXlsToJsonl(inputPath);
+      const fileName = path.basename(file, path.extname(file));
+      const outputPath = path.join(outputDir, `${fileName}.jsonl`);
+
+      const result = convertXlsToJsonl(inputPath, outputPath);
       if (result) successCount++;
     });
 
@@ -114,15 +127,18 @@ function main() {
 🔄 XLS to JSON Lines Converter
 
 Cara pakai:
-  node converter.js <file.xls>                  # Convert single file
-  node converter.js <file.xls> <output.jsonl>  # Convert dengan custom output
-  node converter.js <folder>                    # Convert semua file di folder
-  node converter.js --help                      # Show help
+  node converter.js <file.xls>                           # Convert single file
+  node converter.js <file.xls> <output.jsonl>           # Convert dengan custom output
+  node converter.js <input-folder>                       # Convert semua file di folder
+  node converter.js <input-folder> <output-folder>       # Convert dengan custom output folder
+  node converter.js --help                               # Show help
 
 Contoh:
   node converter.js data.xls
   node converter.js data.xls hasil.jsonl
   node converter.js ./excel-files/
+  node converter.js C:\\Data\\Excel\\ D:\\Results\\
+  node converter.js ../company-data/ ~/Desktop/output/
         `);
     return;
   }
@@ -133,13 +149,23 @@ Contoh:
 
 Commands:
   Single file: node converter.js input.xls [output.jsonl]
-  Folder:      node converter.js /path/to/folder/
+  Folder:      node converter.js <input-folder> [output-folder]
   Help:        node converter.js --help
+
+Examples:
+  node converter.js data.xls
+  node converter.js C:\\Excel\\data.xls D:\\Output\\result.jsonl
+  node converter.js ./input-folder/ ./output-folder/
+  node converter.js C:\\Company\\Reports\\ D:\\Processed\\
+  node converter.js ../external-data/ ~/Desktop/results/
 
 Features:
   ✅ Support .xls dan .xlsx
   ✅ Convert to JSON Lines format (JSONL)
+  ✅ Clean headers (lowercase + underscore)
   ✅ Batch convert untuk folder
+  ✅ Custom input/output paths (dalam atau luar project)
+  ✅ Auto-create output directories
   ✅ Error handling yang baik
   ✅ Shows record count
         `);
@@ -160,7 +186,8 @@ Features:
 
   if (stats.isDirectory()) {
     // Convert semua file di folder
-    convertFolder(inputPath);
+    const outputFolder = args[1]; // Optional output folder
+    convertFolder(inputPath, outputFolder);
   } else if (stats.isFile()) {
     // Convert single file
     const ext = path.extname(inputPath).toLowerCase();
